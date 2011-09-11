@@ -2,7 +2,10 @@
 // http://api.tropo.com/1.0/sessions?action=create&token=<YOUR_TROPO_VOICE_TOKEN>&to=<PHONE_NUMBER>&network=SMS&say=hi2u
 
 // Modules
+var config = require('./config');
+var events = require('events');
 var express = require('express');
+var http = require('http');
 var tropo_webapi = require('tropo-webapi');
 var querystring = require('querystring');
 var u = require('underscore');
@@ -18,7 +21,13 @@ var dbg = function(msg){
 var ENDPOINT_TRIGGER_REQUEST_OPTIONS = {
 	host: 'api.tropo.com',
 	port: 80,
+	method: 'POST',
+	headers: {
+		"Accept": 'application/json',
+		"Content-Type": 'application/json'
+	}
 };
+var TROPO_VOICE_TOKEN = config.TROPO_VOICE_TOKEN;
 
 // Script
 var app = express.createServer();
@@ -55,7 +64,7 @@ app.all('/continue', function(req,res){
 	dbg('Got /continue request body: '+util.inspect(req.body));
 	var answer = req.body['result']['actions']['value'];
 	dbg('GOT SMS ANSWER: '+answer);
-	answerCallback( answer );
+	answerCallback( req.body );
 });
 
 app.listen( PORT );
@@ -101,23 +110,60 @@ function tropoSayWrapper( options ){
 	return new Say( options.say || null );
 }
 
-
 // Exports for use as NodeJS module
-exports.setAnswerCallback = function(fn){
-	answerCallback = fn;
+var tropoEventEmitter = new events.EventEmitter();
+exports.tropoEventEmitter = tropoEventEmitter;
+
+tropoEventEmitter.on('newListenter', function(ev, li){console.log([ev, li]);});
+
+answerCallback = function(reqBody){
+	dbg('emitting event: "'+reqBody.result.sessionId+'"');
+
+	tropoEventEmitter.on(reqBody.result.sessionId, function(val){
+		console.log(val);
+	});
+
+	tropoEventEmitter.emit(
+		String(reqBody.result.sessionId),
+		reqBody.result.actions.value
+	);
 }
 
-exports.send = function(options){
+exports.send = function(options, cb){
 	// accept a hash with properties 'to', 'network' and 'say'
-
 	var qs = querystring.stringify( u(options).extend({
 		action: 'create',
 		token: TROPO_VOICE_TOKEN
 	}) );
 
-	http.get( u(ENDPOINT_TRIGGER_REQUEST_OPTIONS).extend({
-		path: '/?' + qs
-	})).on('error', function(err){
+	var opts = 
+		u(ENDPOINT_TRIGGER_REQUEST_OPTIONS).extend({
+			path: '/1.0/sessions?' + qs
+		});
+
+	dbg('Send options: '+util.inspect(opts));
+
+	http.request(
+		opts,
+		function(res){
+			var buf = '';
+			res.on('data', function(chunk){
+				buf += chunk;
+			});
+			res.on('end', function(){
+				dbg('Got buf '+buf);
+				cb(querystring.parse(buf).id.trim());	//TODO: WTF trim hack??
+			});
+		}
+	).on('error', function(err){
 		dbg(String(err));
-	});
+	}).end();
+};
+
+exports.setDebugging = function(debugging){
+	DEBUGGING = debugging;
+};
+
+exports.setDbg = function(fn){
+	dbg = fn;
 };
