@@ -40,7 +40,7 @@ irc.on('privmsg', function(msg){
 	if (options) {
 		tropo_backend.send(tropoSMSOptions, function(id){
 			dbg('adding listener for id: "'+id+'"');
-			delete(lastMsgHash.id);
+			delete(lastMessageHash.id);
 			tropoEventEmitter.on(String(id), function(replyMsg){
 				if(isDuplicate(id, replyMsg)){return;}
 				irc.privmsg(
