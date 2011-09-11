@@ -41,6 +41,7 @@ irc.on('privmsg', function(msg){
 		tropo_backend.send(tropoSMSOptions, function(id){
 			dbg('adding listener for id: "'+id+'"');
 			tropoEventEmitter.on(String(id), function(replyMsg){
+				if(isDuplicate(id, replyMsg)){return;}
 				irc.privmsg(
 					CHANNEL, 
 					options.to + ' says: ' + replyMsg
@@ -64,7 +65,7 @@ function getOptions(msg){
 	if (match){
 		return {
 			to: match[1],
-			msg: match[2]
+			msg: msg.sender+' in '+CHANNEL+' says: '+match[2]
 		};
 	}
 	return false;
@@ -88,5 +89,14 @@ function handlePossibleAdd(msg){
 		irc.privmsg(CHANNEL, key+' now mapped to '+value);
 		return true;
 	}
+	return false;
+}
+
+var lastMessageHash = {};
+function isDuplicate(sessionID, msg){
+	if(lastMessageHash[sessionID] == msg){
+		return true;
+	}
+	lastMessageHash[sessionID] = msg;
 	return false;
 }
