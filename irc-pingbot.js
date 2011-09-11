@@ -15,6 +15,8 @@ var options = {
 
 var TRIGGER_REGEX = 
 	new RegExp('^'+NICK+'[^ A-Za-z0-9] get ([^ ]*) (.*$)*', 'i');
+var ADD_TRIGGER_REGEX = 
+	new RegExp('^'+NICK+'[^ A-Za-z0-9] add ([^ ]*) ([0-9]{10}$)');
 var NAME_NUMBER_MAPPING = config.NAME_NUMBER_MAPPING;
 
 var DEBUGGING = config.DEBUGGING;
@@ -29,6 +31,8 @@ irc.connect(function(){irc.join(CHANNEL);});
 
 irc.on('privmsg', function(msg){
 	parseMsgMore(msg);
+
+	if(handlePossibleAdd(msg)){return;}
 
 	var options = getOptions(msg);
 	var tropoSMSOptions = getTropoSMSOptions(options);
@@ -72,4 +76,17 @@ function getTropoSMSOptions(options){
 		network: 'SMS',
 		say: (options.msg || null)
 	};		
+}
+
+function handlePossibleAdd(msg){
+	var match = msg.content.match( ADD_TRIGGER_REGEX );
+	if(match){
+		var key = match[1];
+		var value = '1'+match[2];
+		dbg('Mapping '+value+' to key '+key+' in NAME_NUMBER_MAPPING');
+		NAME_NUMBER_MAPPING[key] = value;
+		irc.privmsg(CHANNEL, key+' now mapped to '+value);
+		return true;
+	}
+	return false;
 }
