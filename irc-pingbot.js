@@ -95,10 +95,11 @@ function handlePossibleAdd(msg){
 	var match = msg.content.match( ADD_TRIGGER_REGEX );
 	if(match){
 		var key = match[1];
-		var value = '1'+match[2];
+		var value = '1'+match[2];	// make sure we add a 1 in front of the phone #
 		dbg('Mapping '+value+' to key '+key+' in NAME_NUMBER_MAPPING');
 		NAME_NUMBER_MAPPING[key] = value;
-		irc.privmsg(CHANNEL, key+' now mapped to '+value);
+		var replyTo = (msg.receiver != NICK) ? msg.receiver : msg.sender;
+		irc.privmsg(replyTo, key+' now mapped to '+value);
 		return true;
 	}
 	return false;
@@ -112,3 +113,6 @@ function isDuplicate(sessionID, msg){
 	lastMessageHash[sessionID] = msg;
 	return false;
 }
+
+
+
