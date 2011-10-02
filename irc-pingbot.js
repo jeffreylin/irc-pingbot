@@ -2,7 +2,7 @@
 var config = require('./config');
 var IRC = require('irc-js');
 var tropo_backend = require('./tropo-backend');
-
+var util = require('util');
 
 // Constants
 var SERVER = config.SERVER;
@@ -53,6 +53,17 @@ irc.on('privmsg', function(msg){
 	
 });
 
+irc.on('error', function(err){
+	dbg('Got error: '+util.inspect(err));
+	dbg('Restarting IRC client');
+	try{
+		irc.disconnect();
+	}
+	catch (err) {
+		dbg('Disconnect error: '+err);
+	}
+	irc.connect(function(){irc.join(CHANNEL);});	
+})
 
 // Helper Functions
 function parseMsgMore(msg){
