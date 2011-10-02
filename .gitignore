@@ -1,4 +1,4 @@
 .DS_Store
 *.swp
 config.js
-pingbot.db
+numbers.db
