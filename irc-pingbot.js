@@ -17,6 +17,8 @@ var TRIGGER_REGEX =
 	new RegExp('^'+NICK+'[^ A-Za-z0-9] get ([^ ]*) (.*$)*', 'i');
 var ADD_TRIGGER_REGEX = 
 	new RegExp('^'+NICK+'[^ A-Za-z0-9] add ([^ ]*) ([0-9]{10}$)');
+var LIST_TRIGGER_REGEX =
+	new RegExp('^'+NICK+'[^ A-Za-z0-9] list', 'i');
 var NAME_NUMBER_MAPPING = config.NAME_NUMBER_MAPPING;
 
 var DEBUGGING = config.DEBUGGING;
@@ -33,6 +35,7 @@ irc.on('privmsg', function(msg){
 	parseMsgMore(msg);
 
 	if(handlePossibleAdd(msg)){return;}
+	if(handlePossibleList(msg)){return;}
 
 	var options = getOptions(msg);
 	var tropoSMSOptions = getTropoSMSOptions(options);
@@ -98,11 +101,26 @@ function handlePossibleAdd(msg){
 		var value = '1'+match[2];	// make sure we add a 1 in front of the phone #
 		dbg('Mapping '+value+' to key '+key+' in NAME_NUMBER_MAPPING');
 		NAME_NUMBER_MAPPING[key] = value;
-		var replyTo = (msg.receiver != NICK) ? msg.receiver : msg.sender;
+		var replyTo = getReplyTo(msg);
 		irc.privmsg(replyTo, key+' now mapped to '+value);
 		return true;
 	}
 	return false;
+}
+
+function handlePossibleList(msg){
+	var match = msg.content.match( LIST_TRIGGER_REGEX );
+	if(match){
+		var replyTo = getReplyTo(msg);
+		var nicks = Object.keys(NAME_NUMBER_MAPPING).join(', ');
+		irc.privmsg(replyTo, 'I have numbers for '+nicks+'.');
+		return true;
+	}
+	return false;
+}
+
+function getReplyTo(msg){ //note: msg must be parsed by parseMsgMore() already
+	return (msg.receiver != NICK) ? msg.receiver : msg.sender;
 }
 
 var lastMessageHash = {};
